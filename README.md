@@ -1,2 +1,2 @@
 # MacEcho
-A voice assistant that runs completely locally. 
+A voice assistant that runs completely on your Mac. 
