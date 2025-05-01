@@ -1,9 +1,15 @@
+import os
 import sounddevice as sd
 import numpy as np
 import asyncio
 import logging
 from typing import AsyncIterator
 
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 logger = logging.getLogger('Macecho.Device')
 
@@ -46,10 +52,12 @@ class AudioRecorder:
         self.queue = asyncio.Queue()
         self.stream = None
         self.is_running = False
-        self.logger = logging.getLogger('TransRouter.Device.Recorder')
+        self.logger = logging.getLogger('Macecho.Device.Recorder')
 
     def callback(self, indata, frames, time, status):
         """音频回调函数"""
+
+        print(f"indata: {indata}")
         if status:
             self.logger.warning(f'状态: {status}')
         # 使用 call_soon_threadsafe 确保线程安全
@@ -147,7 +155,7 @@ class AudioPlayer:
         self.done = asyncio.Event()
         self.stream = None
         self.is_running = False
-        self.logger = logging.getLogger('TransRouter.Device.Player')
+        self.logger = logging.getLogger('Macecho.Device.Player')
 
     async def clear(self):
         """清空播放队列"""
