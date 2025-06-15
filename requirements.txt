@@ -1,1 +1,35 @@
+# Core dependencies
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+numpy>=1.21.0
+scipy>=1.7.0
 
+# Audio processing
+pyaudio>=0.2.11
+soundfile>=0.10.0
+librosa>=0.9.0
+
+# Machine Learning
+torch>=1.9.0
+transformers>=4.20.0
+onnxruntime>=1.12.0
+
+# MLX (Apple Silicon)
+mlx>=0.12.0
+
+# Speech Processing
+funasr>=1.0.0
+
+# Utilities
+tqdm>=4.64.0
+matplotlib>=3.5.0
+requests>=2.28.0
+
+# Optional dependencies for config file support
+pyyaml>=6.0
+
+# Development dependencies
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+black>=22.0.0
+flake8>=5.0.0

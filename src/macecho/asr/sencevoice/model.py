@@ -53,8 +53,9 @@ class SenceVoiceASR(BaseASR):
             logger.info(f"正在加载模型: {model_dir}, 设备: {device}")
             start_time = time.time()
 
-            model = AutoModel(
-                model=model_dir,
+
+model = AutoModel(
+    model=model_dir,
                 device=device,
                 batch_size=batch_size,
                 disable_update=disable_update
