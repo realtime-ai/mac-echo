@@ -1,11 +1,20 @@
 import pytest
-import numpy as np
+try:
+    import numpy as np
+    import soundfile as sf
+except Exception:  # pragma: no cover - optional deps
+    import pytest
+    pytest.skip("Required audio libraries not available", allow_module_level=True)
+
 import asyncio
-import soundfile as sf
 import os
 import shutil
 from unittest.mock import Mock, patch
-from src.macecho.device.device import AudioRecorder
+try:
+    from src.macecho.device.device import AudioRecorder
+except Exception as e:  # pragma: no cover - optional deps
+    import pytest
+    pytest.skip(f"Audio device libraries not available: {e}", allow_module_level=True)
 
 
 @pytest.mark.asyncio

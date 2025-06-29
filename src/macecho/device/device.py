@@ -88,8 +88,9 @@ class AudioRecorder:
             # 使用上下文管理器确保流的正确关闭
             with self.stream:
                 self.is_running = True
-                self.logger.info(f'开始录音: 设备={self.device}, 采样率={
-                                 self.samplerate}, 块大小={self.blocksize}')
+                self.logger.info(
+                    f'开始录音: 设备={self.device}, 采样率={self.samplerate}, 块大小={self.blocksize}'
+                )
 
                 while self.is_running:
                     try:

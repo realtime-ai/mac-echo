@@ -63,8 +63,10 @@ class VadProcessor:
         # 用于存储临时音频缓冲
         self.tmp_audio_buffer = bytearray()
 
-        self.frame_size = int((sampling_rate / 1000) *
-                              per_frame_duration * 2)  # int16 should *2
+        # 每帧的字节数：采样率 * 单帧时长 * 2（int16）
+        # 原实现使用 ``sampling_rate / 1000`` 导致结果始终为 1，
+        # 无法正确分割音频帧
+        self.frame_size = int(sampling_rate * per_frame_duration * 2)
 
         # 配置参数
         self.min_speech_samples = int(min_speech_duration * sampling_rate)
