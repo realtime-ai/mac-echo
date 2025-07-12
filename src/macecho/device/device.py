@@ -57,7 +57,6 @@ class AudioRecorder:
     def callback(self, indata, frames, time, status):
         """音频回调函数"""
 
-        print(f"indata: {indata}")
         if status:
             self.logger.warning(f'状态: {status}')
         # 使用 call_soon_threadsafe 确保线程安全

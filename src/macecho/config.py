@@ -101,7 +101,7 @@ class VADConfig(BaseModel):
     min_speech_duration: float = Field(
         default=0.1, ge=0.0, description="Minimum speech duration in seconds")
     silence_duration: float = Field(
-        default=0.5, ge=0.0, description="Silence duration threshold in seconds")
+        default=0.8, ge=0.5, description="Silence duration threshold in seconds")
     per_frame_duration: float = Field(
         default=0.032, gt=0.0, description="Per frame duration in seconds")
     model_path: str = Field(default="silero_vad.onnx",

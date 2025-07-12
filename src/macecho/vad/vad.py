@@ -28,7 +28,7 @@ class VadConfig(BaseModel):
         default=0.5, ge=0.0, description="静音判断时长，单位秒")
     per_frame_duration: float = Field(
         default=0.032, gt=0.0, description="每帧音频的时长，单位秒 (16kHz: 0.032s=512样本, 8kHz: 0.032s=256样本)")
-    model_path: str = Field(default="silero_vad.onnx", description="VAD模型路径")
+    model_path: str = Field(default="./silero_vad.onnx", description="VAD模型路径")
 
     @field_validator('sampling_rate')
     @classmethod
@@ -79,15 +79,32 @@ class VadProcessor(VADInterface):
     def _load_model(self):
         """加载VAD模型"""
         try:
-            if not os.path.exists(self.config.model_path):
-                logger.info(f"下载 Silero VAD 模型到: {self.config.model_path}")
+            # 优先查找当前目录下的模型文件
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            local_model_path = os.path.join(current_dir, "silero_vad.onnx")
+
+            print(f"current_dir: {current_dir}")
+            print(f"local_model_path: {local_model_path}")
+            print(f"self.config.model_path: {self.config.model_path}")
+
+            # 确定最终使用的模型路径
+            if os.path.exists(local_model_path):
+                model_path = local_model_path
+                logger.info(f"使用当前目录下的VAD模型: {model_path}")
+            elif os.path.exists(self.config.model_path):
+                model_path = self.config.model_path
+                logger.info(f"使用配置指定的VAD模型: {model_path}")
+            else:
+                # 如果都不存在，优先下载到当前目录
+                model_path = local_model_path
+                logger.info(f"下载 Silero VAD 模型到当前目录: {model_path}")
                 urllib.request.urlretrieve(
                     "https://github.com/snakers4/silero-vad/raw/refs/heads/master/src/silero_vad/data/silero_vad.onnx",
-                    self.config.model_path
+                    model_path
                 )
 
             # 初始化 ONNX Runtime
-            self.session = ort.InferenceSession(self.config.model_path)
+            self.session = ort.InferenceSession(model_path)
 
             # 检查模型输入输出规格
             self.input_names = [

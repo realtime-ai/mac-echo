@@ -2,6 +2,10 @@
 
 import asyncio
 import time
+import os
+import wave
+from datetime import datetime
+from pathlib import Path
 from macecho.config import MacEchoConfig
 from macecho.device import device
 from macecho.device.device import AudioPlayer, AudioRecorder
@@ -9,7 +13,7 @@ from macecho.utils.queue import QueueIterator
 import numpy as np
 import collections
 
-from macecho.vad import vad
+from macecho.vad.vad import VadProcessor
 from macecho.vad.interface import VadState
 
 
@@ -21,6 +25,28 @@ class Agent:
         self.vad = None
         self.audio_player = None
         self.audio_recorder = None
+
+        # Initialize VAD processor with mapped config
+        from macecho.vad.vad import VadConfig
+        vad_config = VadConfig(
+            threshold=config.vad.threshold,
+            sampling_rate=config.audio_recording.sample_rate,
+            padding_duration=config.vad.padding_duration,
+            min_speech_duration=config.vad.min_speech_duration,
+            silence_duration=config.vad.silence_duration,
+            per_frame_duration=config.vad.per_frame_duration,
+            model_path=config.vad.model_path
+        )
+        self.vad = VadProcessor(vad_config)
+
+        # Create debug audio output directory if in debug mode
+        if config.debug:
+            self.debug_audio_dir = Path("debug_audio")
+            self.debug_audio_dir.mkdir(exist_ok=True)
+            print(
+                f"Debug mode: Audio files will be saved to {self.debug_audio_dir}")
+        else:
+            self.debug_audio_dir = None
         self.audio_recorder = AudioRecorder(
             device=config.audio_recording.device_index,
             channels=config.audio_recording.channels,
@@ -123,27 +149,101 @@ class Agent:
             frame: 音频帧数据（numpy数组）
         """
         try:
-            # TODO: 在这里添加VAD等处理逻辑
-            # 例如：
-            # if self.vad:
-            #     is_speech, prob = self.vad.is_speech(frame)
-            #     if is_speech:
-            #         # 处理语音帧
-            #         pass
+            # Use the initialized VAD processor
+            if self.vad:
+                speech_segment, state = self.vad.process_audio(frame)
 
-            # 临时：将帧数据放回播放队列（用于测试）
-            # await self.audio_player_queue.put(frame.tobytes())
+                if state == VadState.SPEECH_START:
+                    print(f'VAD: Speech start detected at {time.time():.3f}')
 
-            speech_segment, state = vad.process_audio(frame)
+                if state == VadState.SPEECH_END and speech_segment is not None:
+                    print(
+                        f'VAD: Speech end detected at {time.time():.3f}, segment duration: {len(speech_segment)/self.config.audio_recording.sample_rate:.2f}s')
 
-            if state == VadState.SPEECH_START:
-                print(f' vad start ======= {time.time()}')
+                    # Save audio in debug mode
+                    if self.config.debug and self.debug_audio_dir:
+                        await self._save_debug_audio(speech_segment)
 
-            if state == VadState.SPEECH_END and speech_segment is not None:
-                print(f' vad end ======= {time.time()}')
+                    # Here you can process the complete speech segment
+                    # For example: send to ASR, then to LLM, then to TTS
+                    await self._process_speech_segment(speech_segment)
+            else:
+                print('Warning: VAD processor not initialized')
 
         except Exception as e:
             print(f"Error in _process_frame: {e}")
+
+    async def _process_speech_segment(self, speech_segment: np.ndarray):
+        """
+        Process a complete speech segment through the pipeline
+
+        Args:
+            speech_segment: Complete speech segment detected by VAD
+        """
+        try:
+            print(
+                f"Processing speech segment of {len(speech_segment)} samples ({len(speech_segment)/self.config.audio_recording.sample_rate:.2f}s)")
+
+            # TODO: Add ASR processing
+            # if self.asr:
+            #     text = await self.asr.transcribe(speech_segment)
+            #     print(f"ASR: {text}")
+
+            # TODO: Add LLM processing
+            # if self.llm and text:
+            #     response = await self.llm.generate(text)
+            #     print(f"LLM: {response}")
+
+            # TODO: Add TTS processing
+            # if self.tts and response:
+            #     audio_response = await self.tts.synthesize(response)
+            #     await self.audio_player_queue.put(audio_response)
+
+        except Exception as e:
+            print(f"Error processing speech segment: {e}")
+
+    async def _save_debug_audio(self, speech_segment: np.ndarray):
+        """
+        Save speech segment to WAV file in debug mode
+
+        Args:
+            speech_segment: Audio data to save
+        """
+        try:
+            # Generate filename with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[
+                :-3]  # Include milliseconds
+            filename = f"speech_{timestamp}.wav"
+            filepath = self.debug_audio_dir / filename
+
+            # Convert float32 audio to int16 for WAV format
+            if speech_segment.dtype == np.float32:
+                # Scale from [-1, 1] to [-32768, 32767]
+                audio_int16 = (speech_segment * 32767).astype(np.int16)
+            elif speech_segment.dtype == np.int16:
+                audio_int16 = speech_segment
+            else:
+                # Convert other types to float32 first, then to int16
+                audio_float = speech_segment.astype(np.float32)
+                if audio_float.max() > 1.0 or audio_float.min() < -1.0:
+                    # Normalize if values are outside [-1, 1] range
+                    audio_float = audio_float / np.max(np.abs(audio_float))
+                audio_int16 = (audio_float * 32767).astype(np.int16)
+
+            # Save as WAV file
+            with wave.open(str(filepath), 'wb') as wav_file:
+                wav_file.setnchannels(1)  # Mono
+                wav_file.setsampwidth(2)  # 16-bit
+                wav_file.setframerate(self.config.audio_recording.sample_rate)
+                wav_file.writeframes(audio_int16.tobytes())
+
+            duration = len(speech_segment) / \
+                self.config.audio_recording.sample_rate
+            print(
+                f"Debug: Saved speech segment to {filepath} (duration: {duration:.2f}s, {len(speech_segment)} samples)")
+
+        except Exception as e:
+            print(f"Error saving debug audio: {e}")
 
     async def stop(self):
         """Stop the audio processing agent gracefully"""
@@ -160,6 +260,10 @@ class Agent:
 
             # 清空音频缓冲区
             self.audio_buffer.clear()
+
+            # Reset VAD if initialized
+            if self.vad:
+                self.vad.reset()
 
         except Exception as e:
             print(f"Error during agent stop: {e}")

@@ -175,3 +175,5 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+debug_audio/
