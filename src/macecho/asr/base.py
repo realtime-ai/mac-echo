@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Generator, Any, Dict, Union
+import asyncio
 
 
 class BaseASR(ABC):
     """
-    抽象的 ASR 基类，支持同步和流式语音识别，并支持自定义参数配置。
+    抽象的 ASR 基类，支持异步和流式语音识别，并支持自定义参数配置。
     """
 
     def __init__(self, language: str = "zh", sample_rate: int = 16000, **kwargs):
@@ -20,22 +21,12 @@ class BaseASR(ABC):
         self.config: Dict[str, Any] = kwargs
 
     @abstractmethod
-    def transcribe(self, audio: Union[bytes, str]) -> str:
+    async def transcribe(self, audio: Union[bytes, str]) -> str:
         """
-        同步识别一段音频。
+        异步识别一段音频。
 
         :param audio: 音频数据（bytes）或文件路径（str）
         :return: 识别文本
-        """
-        pass
-
-    @abstractmethod
-    def stream_transcribe(self, audio_stream: Generator[bytes, None, None]) -> Generator[str, None, None]:
-        """
-        流式识别，将音频块转换为逐步输出的文本结果。
-
-        :param audio_stream: 音频块生成器
-        :return: 文本结果生成器
         """
         pass
 
