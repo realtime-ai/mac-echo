@@ -104,9 +104,11 @@ vad_threshold = config.vad.threshold
 ```
 
 ### Agent Lifecycle
+- Agent initializes VAD processor automatically using config parameters
+- VAD processor maps sampling rate from audio_recording config to VAD config
 - Supports both manual resource management and async context manager
 - Proper exception handling for audio processing errors
-- Graceful shutdown with cleanup of audio resources
+- Graceful shutdown with cleanup of audio resources and VAD state reset
 - Signal handling for long-running processes
 
 ### Device Support
