@@ -157,7 +157,7 @@ class TTSConfig(BaseModel):
     model_path: Optional[str] = Field(
         default=None, description="Custom model path")
     voice_id: str = Field(default="中文女", description="Voice ID for synthesis")
-    speed: float = Field(default=1.0, ge=0.1, le=3.0,
+    speed: float = Field(default=1.0, ge=0.8, le=2.0,
                          description="Speech speed multiplier")
     device: str = Field(
         default="cpu", description="Device to run TTS model on")

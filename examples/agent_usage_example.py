@@ -3,14 +3,14 @@
 Example usage of the Agent class with proper exception handling.
 """
 
-from macecho.agent import Agent
 from macecho.config import MacEchoConfig
+from macecho.agent import Agent
 import asyncio
 import signal
 import sys
 from pathlib import Path
 
-# Add src to path for imports
+# Add src to path for imports BEFORE importing macecho modules
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
@@ -42,7 +42,7 @@ async def main():
         },
         audio_player={
             "sample_rate": 24000,
-            "format": "float32",
+            "format": "int16",
             "channels": 1
         },
         debug=True
