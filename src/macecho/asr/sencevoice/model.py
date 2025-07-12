@@ -6,7 +6,7 @@ import logging
 from typing import Generator, Union, Any, Dict, Optional, Tuple
 import asyncio
 
-from src.macecho.asr.base import BaseASR
+from macecho.asr.base import BaseASR
 
 # 配置日志
 logging.basicConfig(
@@ -53,9 +53,8 @@ class SenceVoiceASR(BaseASR):
             logger.info(f"正在加载模型: {model_dir}, 设备: {device}")
             start_time = time.time()
 
-
-model = AutoModel(
-    model=model_dir,
+            model = AutoModel(
+                model=model_dir,
                 device=device,
                 batch_size=batch_size,
                 disable_update=disable_update
@@ -137,9 +136,9 @@ model = AutoModel(
             self.ready = False
             return False
 
-    def transcribe(self, audio: Union[bytes, str]) -> str:
+    async def transcribe(self, audio: Union[bytes, str]) -> str:
         """
-        同步识别一段音频。
+        异步识别一段音频。
 
         Args:
             audio: 音频数据（bytes）或文件路径（str）
@@ -159,26 +158,28 @@ model = AutoModel(
             audio_data = self._prepare_audio(audio)
 
             # 记录开始时间
-            self.logger.debug(f"开始识别，音频数据大小: {len(audio_data)} 字节")
+            self.logger.debug(f"开始异步识别，音频数据大小: {len(audio_data)} 字节")
             start_time = time.time()
 
-            # 进行识别
-            res = self.model.generate(
-                input=audio_data,
-                language=self.language,
-                use_itn=self.use_itn,
-            )
+            # 在线程池中异步执行识别，避免阻塞主线程
+            def _sync_transcribe():
+                res = self.model.generate(
+                    input=audio_data,
+                    language=self.language,
+                    use_itn=self.use_itn,
+                )
+                return rich_transcription_postprocess(res[0]["text"])
 
-            # 后处理
-            text = rich_transcription_postprocess(res[0]["text"])
+            # 使用 asyncio.to_thread 在线程池中执行同步代码
+            text = await asyncio.to_thread(_sync_transcribe)
 
             # 记录结果
             process_time = time.time() - start_time
-            self.logger.debug(f"识别完成，耗时: {process_time:.2f}秒，结果: {text}")
+            self.logger.debug(f"异步识别完成，耗时: {process_time:.2f}秒，结果: {text}")
 
             return text
         except Exception as e:
-            self.logger.error(f"识别失败: {e}")
+            self.logger.error(f"异步识别失败: {e}")
             return ""
 
     def stream_transcribe(self, audio_stream: Generator[bytes, None, None]) -> Generator[str, None, None]:
@@ -311,10 +312,10 @@ model = AutoModel(
         else:
             raise ValueError(f"不支持的音频格式: {type(audio)}")
 
-    # 兼容旧接口，重命名为transcribe
+    # 兼容旧接口，重命名为transcribe（已弃用，请使用async transcribe）
     async def recognize(self, audio_data: bytes) -> str:
         """
-        异步识别接口（为兼容旧代码保留）
+        异步识别接口（为兼容旧代码保留，建议使用transcribe）
 
         Args:
             audio_data: 原始音频数据（字节格式）
@@ -322,7 +323,7 @@ model = AutoModel(
         Returns:
             str: 识别结果文本
         """
-        return self.transcribe(audio_data)
+        return await self.transcribe(audio_data)
 
 
 # 创建默认实例用于测试
@@ -348,13 +349,17 @@ if __name__ == "__main__":
         print(f"测试文件不存在: {testfile}")
         exit(1)
 
-    # 测试同步识别
-    print("\n--- 测试同步识别 ---")
-    start_time = time.time()
-    text = asr.transcribe(testfile)
-    process_time = time.time() - start_time
-    print(f"同步识别完成，耗时: {process_time:.2f}秒")
-    print(f"识别结果: {text}")
+    # 测试同步识别 -> 异步识别
+    print("\n--- 测试异步识别 ---")
+    
+    async def test_async_transcribe():
+        start_time = time.time()
+        text = await asr.transcribe(testfile)
+        process_time = time.time() - start_time
+        print(f"异步识别完成，耗时: {process_time:.2f}秒")
+        print(f"识别结果: {text}")
+    
+    asyncio.run(test_async_transcribe())
 
     # 测试流式识别
     print("\n--- 测试流式识别 ---")

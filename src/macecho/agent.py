@@ -15,6 +15,7 @@ import collections
 
 from macecho.vad.vad import VadProcessor
 from macecho.vad.interface import VadState
+from macecho.asr.sencevoice.model import SenceVoiceASR
 
 
 class Agent:
@@ -38,6 +39,20 @@ class Agent:
             model_path=config.vad.model_path
         )
         self.vad = VadProcessor(vad_config)
+
+        # Initialize ASR processor
+        try:
+            self.asr = SenceVoiceASR(
+                language=config.asr.language,
+                sample_rate=config.audio_recording.sample_rate,
+                model_dir=config.asr.model_name,
+                device=config.asr.device,
+                auto_initialize=True
+            )
+            print(f"ASR initialized: {type(self.asr)}")
+        except Exception as e:
+            print(f"Warning: Failed to initialize ASR: {e}")
+            self.asr = None
 
         # Create debug audio output directory if in debug mode
         if config.debug:
@@ -184,14 +199,31 @@ class Agent:
             print(
                 f"Processing speech segment of {len(speech_segment)} samples ({len(speech_segment)/self.config.audio_recording.sample_rate:.2f}s)")
 
-            # TODO: Add ASR processing
-            # if self.asr:
-            #     text = await self.asr.transcribe(speech_segment)
-            #     print(f"ASR: {text}")
+            # ASR processing
+            transcribed_text = ""
+            if self.asr and self.asr.is_ready():
+                try:
+                    print("ASR: Starting async transcription...")
+                    # Convert numpy array to bytes for ASR processing
+                    if speech_segment.dtype == np.float32:
+                        # Convert float32 to int16 for ASR
+                        audio_int16 = (speech_segment * 32767).astype(np.int16)
+                        audio_bytes = audio_int16.tobytes()
+                    else:
+                        audio_bytes = speech_segment.tobytes()
+
+                    # Use async transcribe to avoid blocking the main thread
+                    transcribed_text = await self.asr.transcribe(audio_bytes)
+                    print(f"ASR: {transcribed_text}")
+                except Exception as e:
+                    print(f"ASR Error: {e}")
+                    transcribed_text = ""
+            else:
+                print("ASR: Not available or not ready")
 
             # TODO: Add LLM processing
-            # if self.llm and text:
-            #     response = await self.llm.generate(text)
+            # if self.llm and transcribed_text:
+            #     response = await self.llm.generate(transcribed_text)
             #     print(f"LLM: {response}")
 
             # TODO: Add TTS processing
@@ -264,6 +296,10 @@ class Agent:
             # Reset VAD if initialized
             if self.vad:
                 self.vad.reset()
+
+            # Release ASR resources if initialized
+            if self.asr:
+                self.asr.release()
 
         except Exception as e:
             print(f"Error during agent stop: {e}")

@@ -104,11 +104,12 @@ vad_threshold = config.vad.threshold
 ```
 
 ### Agent Lifecycle
-- Agent initializes VAD processor automatically using config parameters
+- Agent initializes VAD and ASR processors automatically using config parameters
 - VAD processor maps sampling rate from audio_recording config to VAD config
+- ASR processor initialized with SenseVoice model and device configuration
 - Supports both manual resource management and async context manager
 - Proper exception handling for audio processing errors
-- Graceful shutdown with cleanup of audio resources and VAD state reset
+- Graceful shutdown with cleanup of audio resources, VAD state reset, and ASR resource release
 - Signal handling for long-running processes
 
 ### Device Support
@@ -125,9 +126,13 @@ vad_threshold = config.vad.threshold
 - Frame-by-frame processing for low latency
 
 ### ASR (SenseVoice)
-- Supports multilingual recognition (auto-detect, en, zh)
-- Model caching system to avoid reload overhead
+- Supports multilingual recognition (auto-detect, en, zh, jp, ko)
+- **Async processing**: Uses `asyncio.to_thread` to avoid blocking main thread
+- Model caching system to avoid reload overhead  
 - Configurable device placement (CPU/GPU/MPS)
+- FunASR-based implementation with post-processing
+- Default model: `iic/SenseVoiceSmall` from ModelScope
+- Automatic model download and caching in `~/.cache/modelscope/`
 
 ### LLM (MLX Integration) 
 - Qwen model family support via MLX

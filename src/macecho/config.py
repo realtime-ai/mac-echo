@@ -110,7 +110,7 @@ class VADConfig(BaseModel):
 
 class ASRConfig(BaseModel):
     """Automatic Speech Recognition configuration"""
-    model_name: str = Field(default="SenseVoiceSmall",
+    model_name: str = Field(default="iic/SenseVoiceSmall",
                             description="ASR model name")
     model_path: Optional[str] = Field(
         default=None, description="Custom model path")
