@@ -1,14 +1,52 @@
 from mlx_lm import load, stream_generate, generate
 import time
 import torch
-from typing import List, Dict, Optional, Union, Generator, Tuple
+from typing import List, Dict, Optional, Union, Generator, Tuple, Any
 import uuid
-import json
+from .base import BaseLLM, LLMProvider, LLMResponse, LLMStreamChunk
+from .context_manager import ConversationContextManager
 
 
-class MLXQwenChat:
+class MLXQwenChat(BaseLLM):
+    """基于MLX的Qwen聊天模型实现"""
+    
     # 类级变量，用于存储已加载的模型实例
     _loaded_models = {}
+
+    def __init__(self, 
+                 model_name: str = "mlx-community/Qwen3-4B-8bit",
+                 do_warmup: bool = True,
+                 device: str = "auto",
+                 **kwargs):
+        """
+        初始化MLX Qwen聊天模型
+
+        Args:
+            model_name: Hugging Face上的模型仓库名称或本地路径
+            do_warmup: 是否在加载后进行模型预热
+            device: 设备选择 (auto, cpu, mps)
+            **kwargs: 传递给基类的其他参数
+        """
+        super().__init__(model_name=model_name, **kwargs)
+        
+        self.device = device
+        self.do_warmup = do_warmup
+        
+        # 加载模型
+        self.model, self.tokenizer = self._load_model()
+        
+        # 如果需要，进行模型预热
+        if self.do_warmup:
+            self._warmup_model()
+
+    @property
+    def provider(self) -> LLMProvider:
+        """返回LLM提供商类型"""
+        return LLMProvider.MLX
+
+    def _load_model(self) -> Tuple:
+        """加载模型的具体实现"""
+        return self.load_model(self.model_name)
 
     @staticmethod
     def load_model(model_repo: str = "mlx-community/Qwen3-4B-8bit") -> Tuple:
@@ -42,14 +80,11 @@ class MLXQwenChat:
 
         return model, tokenizer
 
-    @staticmethod
-    def warmup_model(model, tokenizer, prompts: List[str] = None):
+    def _warmup_model(self, prompts: Optional[List[str]] = None):
         """
-        静态方法：预热模型，通过运行一些简单的推理来提高后续请求的响应速度
+        预热模型，通过运行一些简单的推理来提高后续请求的响应速度
 
         Args:
-            model: 加载的模型实例
-            tokenizer: 分词器实例
             prompts: 预热用的提示语列表，如果为None则使用默认提示语
         """
         if prompts is None:
@@ -63,32 +98,15 @@ class MLXQwenChat:
         for i, prompt in enumerate(prompts):
             print(f"预热请求 {i+1}/{len(prompts)}...")
             messages = [{"role": "user", "content": prompt}]
-            chat_prompt = tokenizer.apply_chat_template(
+            chat_prompt = self.tokenizer.apply_chat_template(
                 messages, add_generation_prompt=True, tokenize=False
             )
 
             # 只生成少量token，目的是预热
-            _ = generate(model, tokenizer, chat_prompt, max_tokens=10)
+            _ = generate(self.model, self.tokenizer, chat_prompt, max_tokens=10)
 
         warmup_time = time.time() - start_time
         print(f"模型预热完成，耗时: {warmup_time:.2f}秒")
-
-    def __init__(self, model_repo: str = "mlx-community/Qwen3-4B-8bit", do_warmup: bool = True):
-        """
-        初始化MLX Qwen聊天模型
-
-        Args:
-            model_repo: Hugging Face上的模型仓库名称或本地路径
-            do_warmup: 是否在加载后进行模型预热
-        """
-        self.model_repo = model_repo
-
-        # 使用静态方法加载模型
-        self.model, self.tokenizer = self.load_model(model_repo)
-
-        # 如果需要，进行模型预热
-        if do_warmup:
-            self.warmup_model(self.model, self.tokenizer)
 
     def _format_messages(self, messages: List[Dict[str, str]]) -> str:
         """
@@ -104,210 +122,171 @@ class MLXQwenChat:
             tokenize=False  # 返回字符串格式的prompt
         )
 
-    def chat_completions(
-        self,
-        messages: List[Dict[str, str]],
-        max_tokens: int = 1024,
-        stream: bool = True,
-        top_p: float = 0.9,
-    ) -> Union[Dict, Generator[Dict, None, None]]:
-        """
-        生成聊天回复，模拟OpenAI的 chat.completions.create 接口
-
-        Args:
-            messages: 消息列表，格式如 [{"role": "user", "content": "你好"}]
-            max_tokens: 生成的最大token数
-            stream: 是否以流式返回
-            top_p: 核心采样概率
-
-        Returns:
-            如果stream=False，返回一个包含回复的字典 (类似ChatCompletion)
-            如果stream=True，返回一个生成器，逐块产生回复 (类似ChatCompletionChunk)
-        """
-        request_id = f"chatcmpl-{uuid.uuid4()}"
+    def _generate_response(self,
+                          messages: List[Dict[str, str]],
+                          max_tokens: int = 1000,
+                          temperature: float = 0.7,
+                          stream: bool = False,
+                          top_p: float = 0.9,
+                          **kwargs) -> Union[LLMResponse, Generator[LLMStreamChunk, None, None]]:
+        """生成响应的具体实现"""
+        if not self.validate_messages(messages):
+            raise ValueError("Invalid message format")
+        
+        request_id = f"mlx-{uuid.uuid4()}"
         created_time = int(time.time())
 
         try:
             prompt = self._format_messages(messages)
         except ValueError as e:
-            # 可以返回一个表示错误的结构，或者直接抛出异常
             raise e
 
-        # --- 流式处理 ---
         if stream:
-            def stream_generator() -> Generator[Dict, None, None]:
-                start_time = time.time()
-                first_token_time = None
-                accumulated_text = ""
-
-                streamer = stream_generate(
-                    self.model,
-                    self.tokenizer,
-                    prompt=prompt,
-                    max_tokens=max_tokens,
-                    top_p=top_p,
-                )
-
-                # 1. 发送角色块
-                yield {
-                    "id": request_id,
-                    "object": "chat.completion.chunk",
-                    "created": created_time,
-                    "model": self.model_repo,
-                    "choices": [{
-                        "index": 0,
-                        "delta": {"role": "assistant", "content": None},
-                        "finish_reason": None
-                    }]
-                }
-
-                # 2. 逐个发送内容块
-                for i, chunk in enumerate(streamer):
-                    token_text = chunk  # stream_generate 直接返回文本
-                    accumulated_text += token_text
-
-                    if i == 0:
-                        first_token_time = time.time() - start_time
-
-                    yield {
-                        "id": request_id,
-                        "object": "chat.completion.chunk",
-                        "created": created_time,  # 保持一致
-                        "model": self.model_repo,
-                        "choices": [{
-                            "index": 0,
-                            "delta": {"content": token_text},
-                            "finish_reason": None  # 中间块没有finish_reason
-                        }]
-                    }
-
-                # 3. 发送结束块
-                yield {
-                    "id": request_id,
-                    "object": "chat.completion.chunk",
-                    "created": created_time,
-                    "model": self.model_repo,
-                    "choices": [{
-                        "index": 0,
-                        "delta": {},  # 结束块delta为空
-                        "finish_reason": "stop"  # 或 "length" 如果达到max_tokens
-                    }]
-                }
-
-                # 发送自定义的计时信息
-                total_time = time.time() - start_time
-                yield {
-                    "id": request_id,
-                    "_type": "custom_timing",  # 使用下划线避免与OpenAI字段冲突
-                    "first_token_time": first_token_time,
-                    "total_time": total_time
-                }
-
-            return stream_generator()
-
-        # --- 非流式处理 ---
+            # 流式响应
+            return self._generate_stream(request_id, prompt, max_tokens, temperature, top_p, **kwargs)
         else:
-            start_time = time.time()
-            first_token_time = None
-            response_text = ""
+            # 非流式响应
+            return self._generate_complete(request_id, prompt, max_tokens, temperature, top_p, **kwargs)
 
-            # 使用stream_generate迭代构建完整响应，并获取first_token_time
-            for i, chunk in enumerate(stream_generate(
-                self.model,
-                self.tokenizer,
-                prompt=prompt,
-                max_tokens=max_tokens,
-                top_p=top_p,
-            )):
-                if i == 0:
-                    first_token_time = time.time() - start_time
-                response_text += chunk
+    def _generate_stream(self, request_id: str, prompt: str, max_tokens: int, 
+                        temperature: float, top_p: float, **kwargs) -> Generator[LLMStreamChunk, None, None]:
+        """生成流式响应"""
+        start_time = time.time()
+        first_token_time = None
 
-            total_time = time.time() - start_time
+        streamer = stream_generate(
+            self.model,
+            self.tokenizer,
+            prompt=prompt,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
+        )
 
-            return {
-                "id": request_id,
-                "object": "chat.completion",
-                "created": created_time,
-                "model": self.model_repo,
-                "choices": [
-                    {
-                        "index": 0,
-                        "message": {
-                            "role": "assistant",
-                            "content": response_text,
-                        },
-                        "finish_reason": "stop",  # 假设正常停止
-                    }
-                ],
-                "usage": {  # 无法精确获取token计数
-                    "prompt_tokens": None,
-                    "completion_tokens": None,
-                    "total_tokens": None,
-                },
-                "_timing": {  # 自定义计时信息
-                    "first_token_time": first_token_time,
-                    "total_time": total_time
-                }
+        # 1. 发送角色块
+        yield LLMStreamChunk(
+            id=request_id,
+            model=self.model_name,
+            role="assistant"
+        )
+
+        # 2. 逐个发送内容块
+        for i, chunk in enumerate(streamer):
+            if i == 0:
+                first_token_time = time.time() - start_time
+
+            yield LLMStreamChunk(
+                id=request_id,
+                model=self.model_name,
+                content=chunk
+            )
+
+        # 3. 发送结束块
+        total_time = time.time() - start_time
+        yield LLMStreamChunk(
+            id=request_id,
+            model=self.model_name,
+            finish_reason="stop",
+            timing={
+                "first_token_time": first_token_time,
+                "total_time": total_time
             }
+        )
+
+    def _generate_complete(self, request_id: str, prompt: str, max_tokens: int,
+                          temperature: float, top_p: float, **kwargs) -> LLMResponse:
+        """生成完整响应"""
+        start_time = time.time()
+        first_token_time = None
+        response_text = ""
+
+        # 使用stream_generate迭代构建完整响应，并获取first_token_time
+        for i, chunk in enumerate(stream_generate(
+            self.model,
+            self.tokenizer,
+            prompt=prompt,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
+        )):
+            if i == 0:
+                first_token_time = time.time() - start_time
+            response_text += chunk
+
+        total_time = time.time() - start_time
+
+        return LLMResponse(
+            id=request_id,
+            model=self.model_name,
+            content=response_text,
+            finish_reason="stop",
+            timing={
+                "first_token_time": first_token_time,
+                "total_time": total_time
+            }
+        )
+
+    def get_model_info(self) -> Dict[str, Any]:
+        """获取模型信息"""
+        return {
+            "provider": self.provider.value,
+            "model_name": self.model_name,
+            "device": self.device,
+            "context_enabled": self.context_enabled,
+            "loaded": self.model_name in self._loaded_models,
+            "warmup_enabled": self.do_warmup
+        }
 
 
 # --- 使用示例 ---
 if __name__ == "__main__":
     try:
-        # 创建聊天实例 (模型会在初始化时加载并预热)
-        chat_model = MLXQwenChat()
+        # 创建聊天实例 (启用上下文管理)
+        chat_model = MLXQwenChat(
+            model_name="mlx-community/Qwen3-4B-8bit",
+            context_enabled=True,
+            max_context_rounds=5,
+            context_window_size=2000,
+            system_prompt="你是一个有用的AI助手，请用中文回答问题。"
+        )
 
-        # --- 非流式输出示例 ---
-        print("\n--- 非流式请求 ---")
-        messages_non_stream = [{"role": "user", "content": "你好，请用中文介绍一下你自己"}]
-        completion = chat_model.chat_completions(
-            messages_non_stream, stream=False, max_tokens=100)
-
-        # 打印类似OpenAI的结构
-        print(json.dumps(completion, indent=2, ensure_ascii=False))
-
-        # 单独提取内容和计时
-        if completion and completion.get("choices"):
-            content = completion["choices"][0]["message"]["content"]
-            timing = completion.get("_timing", {})
-            print(f"\n回复内容:\n{content}")
-            print(f"\n计时: "
-                  f"首Token: {timing.get('first_token_time', 'N/A'):.2f}秒, "
-                  f"总耗时: {timing.get('total_time', 'N/A'):.2f}秒")
-        else:
-            print("未能获取有效回复。")
-
-        # --- 流式输出示例 ---
-        print("\n--- 流式请求 ---")
-        messages_stream = [{"role": "user", "content": "给我讲一个关于太空旅行的短故事"}]
-        stream = chat_model.chat_completions(
-            messages_stream, stream=True, max_tokens=150)
-
-        full_streamed_content = ""
-        stream_timing = {}
-
-        print("回复内容:")
-        for chunk in stream:
-            # 处理自定义计时块
-            if chunk.get("_type") == "custom_timing":
-                stream_timing = chunk
-                continue  # 不打印计时块本身
-
-            # 处理OpenAI格式的块
-            if chunk and chunk.get("choices"):
-                delta = chunk["choices"][0].get("delta", {})
-                content_piece = delta.get("content")
-                if content_piece:
-                    print(content_piece, end="", flush=True)
-                    full_streamed_content += content_piece
-
-        print()  # 换行
-
-        # 打印流式计信息息
-        print(f"\n流式计时: "
-              f"首Token: {stream_timing.get('first_token_time', 'N/A'):.2f}秒, "
-              f"总耗时: {stream_timing.get('total_time', 'N/A'):.2f}秒")
+        print("=== 基于BaseLLM的上下文管理功能演示 ===")
+        print(f"模型信息: {chat_model.get_model_info()}")
+        
+        # 多轮对话演示
+        conversation_turns = [
+            "你好，我叫小明，今年25岁",
+            "我的爱好是什么？",  # 这里AI应该无法回答，因为没有相关信息
+            "我喜欢踢足球和看电影",
+            "现在你知道我的爱好了吗？",  # 现在AI应该能回答
+            "我多大年龄？"  # 测试前面提到的年龄信息
+        ]
+        
+        for i, user_message in enumerate(conversation_turns, 1):
+            print(f"\n--- 第{i}轮对话 ---")
+            print(f"用户: {user_message}")
+            
+            # 使用带上下文的对话方法
+            response = chat_model.chat_with_context(
+                user_message=user_message,
+                stream=False,
+                max_tokens=200
+            )
+            
+            if response and response.get("choices"):
+                assistant_reply = response["choices"][0]["message"]["content"]
+                print(f"助手: {assistant_reply}")
+            
+            # 显示当前上下文状态
+            context_summary = chat_model.get_context_summary()
+            print(f"上下文状态: {context_summary['total_turns']}轮对话, "
+                  f"约{context_summary['estimated_tokens']}个token")
+        
+        # 最终上下文状态
+        final_summary = chat_model.get_context_summary()
+        print(f"\n最终上下文状态: {final_summary}")
 
     except Exception as e:
         print(f"\n发生错误: {e}")
+        import traceback
+        traceback.print_exc()

@@ -1,4 +1,4 @@
-from macecho.sentencizer import BaseSentencizer
+from .base import BaseSentencizer
 from typing import List, Generator
 
 
