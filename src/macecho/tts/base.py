@@ -30,13 +30,6 @@ class BaseTTS(ABC):
         """
         pass
 
-    @abstractmethod
-    def save_to_file(self, text: str, file_path: str) -> None:
-        """
-        将文本转换为语音并保存为文件。
-        """
-        pass
-
     def set_voice(self, voice: str):
         self.voice = voice
 

@@ -177,3 +177,4 @@ cython_debug/
 .pypirc
 
 debug_audio/
+test_output/
