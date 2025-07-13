@@ -16,31 +16,31 @@ class MessageType(Enum):
     HEARTBEAT = "heartbeat"          # 心跳消息
 
     # 音频处理消息
-    VAD_START = "vad_start"          # VAD检测到语音开始
-    VAD_END = "vad_end"              # VAD检测到语音结束
-    ASR_REQUEST = "asr_request"      # ASR识别请求
-    ASR_RESPONSE = "asr_response"    # ASR识别结果
+    VAD_START = "vad.start"          # VAD检测到语音开始
+    VAD_END = "vad.end"              # VAD检测到语音结束
+    ASR_REQUEST = "asr.request"      # ASR识别请求
+    ASR_RESPONSE = "asr.response"    # ASR识别结果
 
     # LLM处理消息
-    LLM_REQUEST = "llm_request"      # LLM生成请求
-    LLM_RESPONSE = "llm_response"    # LLM生成结果
-    LLM_STREAM = "llm_stream"        # LLM流式生成
+    LLM_REQUEST = "llm.request"      # LLM生成请求
+    LLM_RESPONSE = "llm.response"    # LLM生成结果
+    LLM_STREAM = "llm.stream"        # LLM流式生成
 
     # TTS处理消息
-    TTS_REQUEST = "tts_request"      # TTS合成请求
-    TTS_RESPONSE = "tts_response"    # TTS合成结果
+    TTS_REQUEST = "tts.request"      # TTS合成请求
+    TTS_RESPONSE = "tts.response"    # TTS合成结果
 
     # 音频播放消息
-    AUDIO_PLAY = "audio_play"        # 音频播放请求
-    AUDIO_STOP = "audio_stop"        # 音频停止请求
+    AUDIO_PLAY = "audio.play"        # 音频播放请求
+    AUDIO_STOP = "audio.stop"        # 音频停止请求
 
     # 状态消息
-    STATUS_UPDATE = "status_update"  # 状态更新
+    STATUS_UPDATE = "status.update"  # 状态更新
     ERROR = "error"                  # 错误消息
 
     # 用户交互消息
-    USER_INPUT = "user_input"        # 用户输入
-    SYSTEM_OUTPUT = "system_output"  # 系统输出
+    USER_INPUT = "user.input"        # 用户输入
+    SYSTEM_OUTPUT = "system.output"  # 系统输出
 
 
 class MessagePriority(Enum):
@@ -229,7 +229,7 @@ class LLMMessage(BaseMessage):
         self.processing_time = processing_time
         self.token_count = token_count
         self.is_complete = is_complete  # 对于流式响应，标记是否完成
-        
+
         # Context management fields
         self.conversation_history = conversation_history or []
         self.context_enabled = context_enabled
@@ -516,11 +516,11 @@ def create_asr_response(text: str, confidence: float, processing_time: float, co
     )
 
 
-def create_llm_request(prompt: str, 
-                      model_name: str = "", 
-                      correlation_id: str = None,
-                      conversation_history: Optional[List[Dict[str, str]]] = None,
-                      context_enabled: bool = False) -> LLMMessage:
+def create_llm_request(prompt: str,
+                       model_name: str = "",
+                       correlation_id: str = None,
+                       conversation_history: Optional[List[Dict[str, str]]] = None,
+                       context_enabled: bool = False) -> LLMMessage:
     """创建LLM请求消息"""
     return LLMMessage(
         prompt=prompt,
@@ -532,12 +532,12 @@ def create_llm_request(prompt: str,
     )
 
 
-def create_llm_response(text: str, 
-                       processing_time: float, 
-                       token_count: int = 0, 
-                       correlation_id: str = None,
-                       context_rounds_used: int = 0,
-                       context_enabled: bool = False) -> LLMMessage:
+def create_llm_response(text: str,
+                        processing_time: float,
+                        token_count: int = 0,
+                        correlation_id: str = None,
+                        context_rounds_used: int = 0,
+                        context_enabled: bool = False) -> LLMMessage:
     """创建LLM响应消息"""
     return LLMMessage(
         text=text,
