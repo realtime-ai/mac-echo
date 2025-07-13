@@ -9,6 +9,7 @@ from pathlib import Path
 from macecho.config import MacEchoConfig
 from macecho.device import device
 from macecho.device.device import AudioPlayer, AudioRecorder
+from macecho.llm import prompt
 from macecho.utils.queue import QueueIterator
 import numpy as np
 import collections
@@ -80,6 +81,7 @@ class Agent:
         # Initialize LLM processor (MLX Qwen)
         try:
 
+            config.llm.system_prompt = prompt.SYSTEM_PROMPT
             self.llm = LLMFactory.create_llm(config.llm)
             print(f"LLM initialized: {type(self.llm)}")
         except Exception as e:
@@ -511,7 +513,8 @@ class Agent:
 
             if not self.tts:
                 # Placeholder TTS processing when TTS is not available
-                print(f"TTS[{sentence_index}]: TTS not available, using placeholder")
+                print(
+                    f"TTS[{sentence_index}]: TTS not available, using placeholder")
                 await asyncio.sleep(1.0)
 
                 # Generate placeholder audio (sine wave)
@@ -520,11 +523,13 @@ class Agent:
                 samples = int(sample_rate * duration)
                 t = np.linspace(0, duration, samples)
                 frequency = 440 + sentence_index * 100
-                audio_data = (0.3 * np.sin(2 * np.pi * frequency * t)).astype(np.float32)
-                
-                print(f"TTS[{sentence_index}]: Generated {duration:.1f}s placeholder audio")
+                audio_data = (
+                    0.3 * np.sin(2 * np.pi * frequency * t)).astype(np.float32)
+
+                print(
+                    f"TTS[{sentence_index}]: Generated {duration:.1f}s placeholder audio")
                 await self.audio_player_queue.put(audio_data.tobytes())
-                
+
                 # Send TTS response message
                 tts_response = create_tts_response(
                     audio_data.tobytes(), duration, 1.0, correlation_id
@@ -534,26 +539,28 @@ class Agent:
             else:
                 # Real CosyVoice TTS processing
                 print(f"TTS[{sentence_index}]: Synthesizing with CosyVoice...")
-                
+
                 start_time = time.time()
-                
+
                 # Use asyncio.to_thread to avoid blocking the event loop
                 audio_data = await asyncio.to_thread(self.tts.synthesize, sentence)
-                
+
                 if audio_data:
                     processing_time = time.time() - start_time
-                    print(f"TTS[{sentence_index}]: Synthesized in {processing_time:.2f}s, {len(audio_data)} bytes")
-                    
+                    print(
+                        f"TTS[{sentence_index}]: Synthesized in {processing_time:.2f}s, {len(audio_data)} bytes")
+
                     # Send audio to player queue
                     await self.audio_player_queue.put(audio_data)
-                    
+
                     # Send TTS response message
                     tts_response = create_tts_response(
                         audio_data, processing_time, processing_time, correlation_id
                     )
                     await self.message_queue.put(tts_response)
                 else:
-                    print(f"TTS[{sentence_index}]: Synthesis failed, no audio generated")
+                    print(
+                        f"TTS[{sentence_index}]: Synthesis failed, no audio generated")
 
         except asyncio.CancelledError:
             print(f"TTS[{sentence_index}]: Processing cancelled")
