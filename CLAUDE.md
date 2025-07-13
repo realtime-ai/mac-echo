@@ -4,10 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture Overview
 
-MacEcho is a voice assistant that runs entirely on Mac, built with a modular streaming audio processing pipeline:
+MacEcho is a voice assistant that runs entirely on Mac, built with a modular streaming audio processing pipeline and an event-driven message system:
 
 ### Core Components
 - **Agent (`src/macecho/agent.py`)**: Main orchestrator that manages the audio processing pipeline
+- **Message System (`src/macecho/message.py`)**: Event-driven message passing system for component communication
 - **VAD (Voice Activity Detection)**: Uses Silero VAD model to detect speech segments
 - **ASR (Automatic Speech Recognition)**: SenseVoice model for speech-to-text conversion  
 - **LLM (Large Language Model)**: Qwen models via MLX for response generation
@@ -76,11 +77,22 @@ python examples/agent_usage_example.py --mode=run
 # Test configuration loading
 python examples/test_config.py
 
+# Demo message system
+python examples/message_system_demo.py
+
 # Alternatively, install in development mode
 pip install -e .
 ```
 
 ## Key Implementation Details
+
+### Message System Architecture
+- **Event-driven communication**: Components communicate through typed messages
+- **Message types**: ASR, LLM, TTS, VAD, Interrupt, Status, Error messages
+- **Priority system**: CRITICAL, HIGH, NORMAL, LOW priority levels
+- **Correlation tracking**: Messages can be linked through correlation IDs
+- **Serialization support**: JSON serialization for message persistence/transmission
+- **Type safety**: Strongly typed message classes with validation
 
 ### Audio Frame Processing
 - Frame duration: 32ms (configurable via `frame_duration_ms`)
