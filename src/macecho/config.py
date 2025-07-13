@@ -135,13 +135,13 @@ class LLMConfig(BaseModel):
     # Provider selection
     provider: str = Field(
         default="mlx", description="LLM provider (mlx, openai, anthropic, custom)")
-    
+
     # Model configuration
     model_name: str = Field(
         default="mlx-community/Qwen2.5-7B-Instruct-4bit", description="LLM model name")
     model_path: Optional[str] = Field(
         default=None, description="Custom model path")
-    
+
     # Generation parameters
     max_tokens: int = Field(
         default=1000, ge=1, description="Maximum tokens to generate")
@@ -149,7 +149,7 @@ class LLMConfig(BaseModel):
         default=0.7, ge=0.0, le=2.0, description="Sampling temperature")
     top_p: float = Field(
         default=0.9, ge=0.0, le=1.0, description="Top-p (nucleus) sampling parameter")
-    
+
     # System configuration
     system_prompt: str = Field(
         default="You are a helpful voice assistant. Keep responses concise and conversational.",
@@ -159,7 +159,7 @@ class LLMConfig(BaseModel):
         default=1, ge=1, description="Maximum number of cached models")
     warmup_enabled: bool = Field(
         default=True, description="Enable model warmup on load")
-    
+
     # Context management settings
     context_enabled: bool = Field(
         default=True, description="Enable conversation context management")
@@ -169,7 +169,7 @@ class LLMConfig(BaseModel):
         default=4000, ge=500, description="Maximum context window size in tokens (approximate)")
     auto_truncate_context: bool = Field(
         default=True, description="Automatically truncate old context when window size is exceeded")
-    
+
     # Provider-specific settings
     openai_api_key: Optional[str] = Field(
         default=None, description="OpenAI API key")
@@ -177,14 +177,14 @@ class LLMConfig(BaseModel):
         default=None, description="OpenAI API base URL (for custom endpoints)")
     openai_organization: Optional[str] = Field(
         default=None, description="OpenAI organization ID")
-    
+
     anthropic_api_key: Optional[str] = Field(
         default=None, description="Anthropic API key")
-    
+
     # MLX-specific settings
     mlx_device: str = Field(
         default="auto", description="Device for MLX models (auto, cpu, mps)")
-    
+
     @field_validator('provider')
     @classmethod
     def validate_provider(cls, v):
@@ -192,7 +192,7 @@ class LLMConfig(BaseModel):
         if v not in allowed_providers:
             raise ValueError(f'Provider must be one of: {allowed_providers}')
         return v
-    
+
     @field_validator('mlx_device')
     @classmethod
     def validate_mlx_device(cls, v):

@@ -5,7 +5,7 @@ from openai import OpenAI
 import io
 from typing import Generator, Optional
 
-from src.macecho.tts.base import BaseTTS
+from .base import BaseTTS
 
 
 # CosyVoice TTS 使用云端的版本
@@ -72,7 +72,21 @@ class CosyVoiceTTS(BaseTTS):
         Returns:
             bytes: 合成后的音频数据
         """
-        pass
+        if not self.client:
+            self.initialize()
+
+        try:
+            # 非流式请求
+            response = self.client.audio.speech.create(
+                model=self.model,
+                voice=f"{self.model}:{self.voice}",
+                input=text,
+                response_format="wav",
+            )
+            return response.content
+        except Exception as e:
+            print(f"同步合成失败: {e}")
+            return bytes()
 
     def stream_synthesize(self, text: str) -> Generator[bytes, None, None]:
         """
