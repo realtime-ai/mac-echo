@@ -82,7 +82,7 @@ class Agent:
         try:
 
             config.llm.system_prompt = prompt.SYSTEM_PROMPT
-            self.llm = LLMFactory.create_llm(config.llm)
+            self.llm = LLMFactory.create_llm(config.llm.model_dump())
             print(f"LLM initialized: {type(self.llm)}")
         except Exception as e:
             print(f"Warning: Failed to initialize LLM: {e}")
