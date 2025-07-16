@@ -38,6 +38,8 @@ class LLMFactory:
             return LLMFactory._create_mlx_llm(config, common_params)
         elif provider == "openai":
             return LLMFactory._create_openai_llm(config, common_params)
+        elif provider == "custom":
+            return LLMFactory._create_openai_llm(config, common_params)
         else:
             raise ValueError(f"Unsupported LLM provider: {provider}")
 
