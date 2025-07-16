@@ -37,6 +37,19 @@ async def main():
             "format": "int16",
             "channels": 1
         },
+        llm= {
+            "model_name": "qwen3:8b",
+            "provider": "custom",
+            "api_key": "ollama",
+            "base_url": "http://localhost:11434",
+            "max_tokens": 1000,
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "context_window_size": 4000,
+            "context_enabled": True,
+            "auto_truncate_context": True,
+            "max_context_rounds": 10,
+        },    
         debug=True
     )
 
