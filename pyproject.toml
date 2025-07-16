@@ -3,7 +3,7 @@ name = "mac-echo"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 dependencies = [
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
@@ -24,5 +24,9 @@ dependencies = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
     "black>=22.0.0",
-    "flake8>=5.0.0"
+    "flake8>=5.0.0",
+    "sounddevice>=0.5.2",
+    "mlx-lm>=0.26.0",
+    "torchaudio>=2.7.1",
+    "openai>=1.96.1",
 ]
