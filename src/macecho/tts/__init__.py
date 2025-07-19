@@ -1,12 +1,12 @@
 from .base import BaseTTS
 from .cosyvoice import CosyVoiceTTS
-from .koroto import KorotoTTS
+from .kokoro import KokoroTTS
 from .factory import TTSFactory, register_tts
 
 __all__ = [
     'BaseTTS',
     'CosyVoiceTTS',
-    'KorotoTTS',
+    'KokoroTTS',
     'TTSFactory',
     'register_tts',
 ]

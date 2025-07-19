@@ -10,10 +10,9 @@ class LLMProvider(Enum):
     """LLM提供商枚举"""
     MLX = "mlx"
     OPENAI = "openai"
-    ANTHROPIC = "anthropic"
     CUSTOM = "custom"
 
-
+    
 class LLMResponse:
     """标准化的LLM响应格式"""
     

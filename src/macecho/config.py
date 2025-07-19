@@ -138,7 +138,7 @@ class LLMConfig(BaseModel):
 
     # Model configuration
     model_name: str = Field(
-        default="mlx-community/Qwen2.5-7B-Instruct-4bit", description="LLM model name")
+        default="mlx-community/Qwen3-4B-8bit", description="LLM model name")
     model_path: Optional[str] = Field(
         default=None, description="Custom model path")
 

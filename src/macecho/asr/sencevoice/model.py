@@ -182,69 +182,6 @@ class SenceVoiceASR(BaseASR):
             self.logger.error(f"异步识别失败: {e}")
             return ""
 
-    def stream_transcribe(self, audio_stream: Generator[bytes, None, None]) -> Generator[str, None, None]:
-        """
-        流式识别，将音频块转换为逐步输出的文本结果。
-
-        Args:
-            audio_stream: 音频块生成器
-
-        Returns:
-            Generator[str, None, None]: 文本结果生成器
-
-        Raises:
-            RuntimeError: 如果模型未初始化
-        """
-        if not self.is_ready():
-            raise RuntimeError("SenceVoice ASR模型未初始化")
-
-        # 由于SenceVoice不直接支持流式识别，我们将缓冲音频数据，达到一定长度后进行识别
-        buffer = bytearray()
-        buffer_threshold = self.get_config(
-            "buffer_threshold", 4000)  # 默认约250ms@16kHz
-
-        for audio_chunk in audio_stream:
-            if not audio_chunk:
-                continue
-
-            # 添加到缓冲区
-            buffer.extend(audio_chunk)
-
-            # 当缓冲区达到阈值时进行识别
-            if len(buffer) >= buffer_threshold:
-                try:
-                    # 识别当前缓冲区
-                    res = self.model.generate(
-                        input=bytes(buffer),
-                        language=self.language,
-                        use_itn=self.use_itn,
-                    )
-
-                    # 处理结果
-                    text = rich_transcription_postprocess(res[0]["text"])
-                    if text.strip():
-                        yield text
-
-                    # 清空缓冲区
-                    buffer = bytearray()
-                except Exception as e:
-                    self.logger.error(f"流式识别出错: {e}")
-                    buffer = bytearray()  # 出错时清空缓冲区
-
-        # 处理剩余的音频数据
-        if buffer:
-            try:
-                res = self.model.generate(
-                    input=bytes(buffer),
-                    language=self.language,
-                    use_itn=self.use_itn,
-                )
-                text = rich_transcription_postprocess(res[0]["text"])
-                if text.strip():
-                    yield text
-            except Exception as e:
-                self.logger.error(f"处理剩余音频数据失败: {e}")
-
     def is_ready(self) -> bool:
         """
         检查ASR模型是否已准备好
