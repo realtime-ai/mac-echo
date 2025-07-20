@@ -36,7 +36,11 @@ class CosyVoiceTTS(BaseTTS):
         self.api_key = self.get_config(
             "api_key", os.getenv("SILICONFLOW_API_KEY"))
         self.base_url = self.get_config(
-            "base_url", "http://api.siliconflow.cn/v1")
+            "base_url", "https://api.siliconflow.cn/v1")
+
+        print("=" * 40)
+        print(f"API密钥: {self.api_key}")
+        print(f"Base URL: {self.base_url}")
 
         # 设置模型和输出目录
         self.model = self.get_config("model", "FunAudioLLM/CosyVoice2-0.5B")
@@ -85,6 +89,7 @@ class CosyVoiceTTS(BaseTTS):
                 input=text,
                 response_format="pcm",
             )
+            print(f"response: {response}")
             return response.content
         except Exception as e:
             print(f"同步合成失败: {e}")

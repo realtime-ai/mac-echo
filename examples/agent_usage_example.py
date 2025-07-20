@@ -3,7 +3,7 @@
 Example usage of the Agent class with proper exception handling.
 """
 
-
+import os
 import asyncio
 import signal
 import sys
@@ -15,11 +15,14 @@ from pathlib import Path
 # Add src to path for imports BEFORE importing macecho modules
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+# fmt: on
+
 ## disable auto format
 from macecho.agent import Agent
 from macecho.config import MacEchoConfig
 
-# fmt: on
+import dotenv
+dotenv.load_dotenv()
 
 
 async def main():
@@ -36,6 +39,13 @@ async def main():
             "sample_rate": 24000,
             "format": "int16",
             "channels": 1
+        },
+        tts={
+            "model_name": "FunAudioLLM/CosyVoice2-0.5B",
+            "voice_id": "david",
+            "speed": 1.0,
+            "api_key": os.environ.get('SILICONFLOW_API_KEY'),
+            "base_url": os.environ.get('SILICONFLOW_BASE_URL'),
         },
         debug=True
     )

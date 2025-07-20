@@ -92,14 +92,14 @@ class Agent:
         # Initialize TTS processor (CosyVoice)
         try:
             from macecho.tts import CosyVoiceTTS
+            
             self.tts = CosyVoiceTTS(
                 voice=config.tts.voice_id or "david",
                 sample_rate=config.audio_player.sample_rate,
                 api_key=getattr(config.tts, 'api_key', None),
                 base_url=getattr(config.tts, 'base_url', None),
-                model=getattr(config.tts, 'model', None)
             )
-            print(f"TTS initialized: {type(self.tts)}")
+            print(f"TTS initialized: { config.tts }")
         except Exception as e:
             print(f"Warning: Failed to initialize TTS: {e}")
             self.tts = None
@@ -382,7 +382,7 @@ class Agent:
             # Reset sentencizer for new conversation
             # Use traditional punctuation-based detection since MLX may not output newlines
             self.sentencizer = LLMSentencizer(
-                newline_as_separator=False,  # Use punctuation for MLX models
+                newline_as_separator=True,  # Use punctuation for MLX models
                 strip_newlines=True
             )
 
@@ -439,7 +439,7 @@ class Agent:
                             if sentence.strip():
                                 sentence_count += 1
                                 print(
-                                    f"LLM → TTS[{sentence_count}]: '{sentence[:50]}...'")
+                                    f"LLM → TTS[{sentence_count}]: '{sentence[:50]}'")
 
                                 # Create TTS task for this sentence
                                 tts_task = asyncio.create_task(
@@ -454,7 +454,7 @@ class Agent:
                 if sentence.strip():
                     sentence_count += 1
                     print(
-                        f"LLM → TTS[{sentence_count}] (final): '{sentence[:50]}...'")
+                        f"LLM → TTS[{sentence_count}] (final): '{sentence[:50]}'")
 
                     tts_task = asyncio.create_task(
                         self._process_single_tts(

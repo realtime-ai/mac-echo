@@ -213,8 +213,10 @@ class TTSConfig(BaseModel):
                          description="Speech speed multiplier")
     device: str = Field(
         default="cpu", description="Device to run TTS model on")
-    max_cache_size: int = Field(
-        default=1, ge=1, description="Maximum number of cached models")
+    api_key: Optional[str] = Field(
+        default=None, description="API key for TTS model")
+    base_url: Optional[str] = Field(
+        default=None, description="Base URL for TTS model")
 
     @field_validator('device')
     @classmethod
