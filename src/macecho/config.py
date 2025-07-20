@@ -204,11 +204,11 @@ class LLMConfig(BaseModel):
 
 class TTSConfig(BaseModel):
     """Text-to-Speech configuration"""
-    model_name: str = Field(default="CosyVoice-300M",
+    model_name: str = Field(default="FunAudioLLM/CosyVoice2-0.5B",
                             description="TTS model name")
     model_path: Optional[str] = Field(
         default=None, description="Custom model path")
-    voice_id: str = Field(default="中文女", description="Voice ID for synthesis")
+    voice_id: str = Field(default="david", description="Voice ID for synthesis")
     speed: float = Field(default=1.0, ge=0.8, le=2.0,
                          description="Speech speed multiplier")
     device: str = Field(

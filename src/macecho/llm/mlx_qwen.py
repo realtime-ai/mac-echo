@@ -1,4 +1,5 @@
 from mlx_lm import load, stream_generate, generate
+from mlx_lm.sample_utils import make_sampler
 import time
 import torch
 from typing import List, Dict, Optional, Union, Generator, Tuple, Any
@@ -99,7 +100,10 @@ class MLXQwenChat(BaseLLM):
             print(f"预热请求 {i+1}/{len(prompts)}...")
             messages = [{"role": "user", "content": prompt}]
             chat_prompt = self.tokenizer.apply_chat_template(
-                messages, add_generation_prompt=True, tokenize=False
+                messages, 
+                add_generation_prompt=True, 
+                tokenize=False,
+                enable_thinking=False
             )
 
             # 只生成少量token，目的是预热
@@ -119,15 +123,15 @@ class MLXQwenChat(BaseLLM):
         return self.tokenizer.apply_chat_template(
             messages,
             add_generation_prompt=True,
+            enable_thinking=False,
             tokenize=False  # 返回字符串格式的prompt
         )
 
     def _generate_response(self,
                           messages: List[Dict[str, str]],
                           max_tokens: int = 1000,
-                          temperature: float = 0.7,
                           stream: bool = False,
-                          top_p: float = 0.9,
+                          temperature: float = 0.7,
                           **kwargs) -> Union[LLMResponse, Generator[LLMStreamChunk, None, None]]:
         """生成响应的具体实现"""
         if not self.validate_messages(messages):
@@ -143,24 +147,26 @@ class MLXQwenChat(BaseLLM):
 
         if stream:
             # 流式响应
-            return self._generate_stream(request_id, prompt, max_tokens, temperature, top_p, **kwargs)
+            return self._generate_stream(request_id, prompt, max_tokens, temperature, **kwargs)
         else:
             # 非流式响应
-            return self._generate_complete(request_id, prompt, max_tokens, temperature, top_p, **kwargs)
+            return self._generate_complete(request_id, prompt, max_tokens, temperature, **kwargs)
 
     def _generate_stream(self, request_id: str, prompt: str, max_tokens: int, 
-                        temperature: float, top_p: float, **kwargs) -> Generator[LLMStreamChunk, None, None]:
+                        temperature: float, **kwargs) -> Generator[LLMStreamChunk, None, None]:
         """生成流式响应"""
         start_time = time.time()
         first_token_time = None
+
+        # Create sampler with temperature
+        sampler = make_sampler(temp=temperature)
 
         streamer = stream_generate(
             self.model,
             self.tokenizer,
             prompt=prompt,
             max_tokens=max_tokens,
-            temperature=temperature,
-            top_p=top_p,
+            sampler=sampler,
         )
 
         # 1. 发送角色块
@@ -171,14 +177,14 @@ class MLXQwenChat(BaseLLM):
         )
 
         # 2. 逐个发送内容块
-        for i, chunk in enumerate(streamer):
+        for i, response in enumerate(streamer):
             if i == 0:
                 first_token_time = time.time() - start_time
 
             yield LLMStreamChunk(
                 id=request_id,
                 model=self.model_name,
-                content=chunk
+                content=response.text
             )
 
         # 3. 发送结束块
@@ -194,24 +200,26 @@ class MLXQwenChat(BaseLLM):
         )
 
     def _generate_complete(self, request_id: str, prompt: str, max_tokens: int,
-                          temperature: float, top_p: float, **kwargs) -> LLMResponse:
+                          temperature: float, **kwargs) -> LLMResponse:
         """生成完整响应"""
         start_time = time.time()
         first_token_time = None
         response_text = ""
 
+        # Create sampler with temperature
+        sampler = make_sampler(temp=temperature)
+
         # 使用stream_generate迭代构建完整响应，并获取first_token_time
-        for i, chunk in enumerate(stream_generate(
+        for i, response in enumerate(stream_generate(
             self.model,
             self.tokenizer,
             prompt=prompt,
             max_tokens=max_tokens,
-            temperature=temperature,
-            top_p=top_p,
+            sampler=sampler,
         )):
             if i == 0:
                 first_token_time = time.time() - start_time
-            response_text += chunk
+            response_text += response.text
 
         total_time = time.time() - start_time
 

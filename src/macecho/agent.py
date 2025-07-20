@@ -80,9 +80,10 @@ class Agent:
 
         # Initialize LLM processor (MLX Qwen)
         try:
-
             config.llm.system_prompt = prompt.SYSTEM_PROMPT
-            self.llm = LLMFactory.create_llm(config.llm)
+            # Convert Pydantic model to dict for LLMFactory
+            llm_config_dict = config.llm.model_dump()
+            self.llm = LLMFactory.create_llm(llm_config_dict)
             print(f"LLM initialized: {type(self.llm)}")
         except Exception as e:
             print(f"Warning: Failed to initialize LLM: {e}")

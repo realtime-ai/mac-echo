@@ -26,6 +26,7 @@ class LLMFactory:
 
         # 通用参数
         common_params = {
+            "warmup_enabled": config.get("warmup_enabled", True),
             "model_name": config.get("model_name", ""),
             "context_enabled": config.get("context_enabled", True),
             "max_context_rounds": config.get("max_context_rounds", 10),
@@ -52,7 +53,7 @@ class LLMFactory:
 
         # 设置默认模型名称
         if not mlx_params["model_name"]:
-            mlx_params["model_name"] = "mlx-community/Qwen2.5-7B-Instruct-4bit"
+            mlx_params["model_name"] = "mlx-community/Qwen3-4B-8bit"
 
         return MLXQwenChat(**mlx_params)
 
