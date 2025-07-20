@@ -178,3 +178,9 @@ cython_debug/
 
 debug_audio/
 test_output/
+
+# Model files
+*.onnx
+*.bin
+src/macecho/tts/kokoro/*.onnx
+src/macecho/tts/kokoro/*.bin
