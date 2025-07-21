@@ -145,6 +145,8 @@ class MLXQwenChat(BaseLLM):
         except ValueError as e:
             raise e
 
+        print(f"prompt: {prompt}")
+
         if stream:
             # 流式响应
             return self._generate_stream(request_id, prompt, max_tokens, temperature, **kwargs)

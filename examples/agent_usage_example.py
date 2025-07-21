@@ -59,7 +59,7 @@ async def main():
 
     try:
         print("Starting agent...")
-        await asyncio.wait_for(agent.start(), timeout=20.0)
+        await asyncio.wait_for(agent.start(), timeout=60.0)
     except asyncio.TimeoutError:
         print("Agent stopped after timeout")
     except KeyboardInterrupt:

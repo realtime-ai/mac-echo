@@ -155,8 +155,7 @@ class LLMConfig(BaseModel):
         default="You are a helpful voice assistant. Keep responses concise and conversational.",
         description="System prompt for the LLM"
     )
-    max_cache_size: int = Field(
-        default=1, ge=1, description="Maximum number of cached models")
+    
     warmup_enabled: bool = Field(
         default=True, description="Enable model warmup on load")
 
@@ -166,7 +165,7 @@ class LLMConfig(BaseModel):
     max_context_rounds: int = Field(
         default=10, ge=1, le=50, description="Maximum number of conversation rounds to keep in context")
     context_window_size: int = Field(
-        default=4000, ge=500, description="Maximum context window size in tokens (approximate)")
+        default=10000, ge=500, description="Maximum context window size in tokens (approximate)")
     auto_truncate_context: bool = Field(
         default=True, description="Automatically truncate old context when window size is exceeded")
 
